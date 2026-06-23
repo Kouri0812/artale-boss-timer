@@ -143,6 +143,69 @@
       box-shadow: var(--shadow);
     }
 
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .guide-step {
+      padding: 12px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: inset 0 -8px 0 #f4f0e8;
+    }
+
+    .guide-number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 8px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fffdf7;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .guide-step strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .guide-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .help-button {
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 2px solid #fffdf7;
+      border-radius: 999px;
+      background: #fffdf7;
+      color: var(--ink);
+      font-size: 22px;
+      font-weight: 900;
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, .22);
+    }
+
     .server-panel summary {
       display: flex;
       align-items: center;
@@ -661,11 +724,19 @@
         display: grid;
       }
 
+      .top-actions {
+        justify-content: flex-start;
+      }
+
       .clock {
         text-align: left;
       }
 
       .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .guide-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -709,9 +780,12 @@
           <p class="subtitle">記錄擊殺時間與頻道，自動整理下一次重生區間。</p>
         </div>
       </div>
-      <div class="clock" aria-live="polite">
-        <div class="clock-label">Now</div>
-        <div class="clock-time" id="nowClock">--:--:--</div>
+      <div class="top-actions">
+        <button class="help-button" id="openGuideButton" type="button" title="使用說明" aria-label="使用說明">?</button>
+        <div class="clock" aria-live="polite">
+          <div class="clock-label">Now</div>
+          <div class="clock-time" id="nowClock">--:--:--</div>
+        </div>
       </div>
     </section>
 
@@ -785,6 +859,35 @@
     </footer>
   </main>
 
+  <div class="modal" id="guideModal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="guideModalTitle">
+      <div class="modal-header">
+        <h2 class="panel-title" id="guideModalTitle">使用說明</h2>
+        <button class="ghost" id="closeGuideModalButton" type="button">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-grid">
+          <div class="guide-step">
+            <span class="guide-number">1</span>
+            <strong>選擇野王</strong>
+            <p>點 Current Boss，從彈窗選擇目前正在刷的野王。</p>
+          </div>
+          <div class="guide-step">
+            <span class="guide-number">2</span>
+            <strong>記錄擊殺</strong>
+            <p>輸入頻道，確認擊殺時間，按 Log Kill 建立下一輪紀錄。</p>
+          </div>
+          <div class="guide-step">
+            <span class="guide-number">3</span>
+            <strong>查看區間</strong>
+            <p>下方表格會依狀態排序，幫你找出即將重生或正在重生的頻道。</p>
+          </div>
+        </div>
+        <p class="note">伺服器開機時間可用來推估第一輪重生；不想追蹤的野王可在開機時間卡牌中隱藏。</p>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="bossModal" hidden>
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="bossModalTitle">
       <div class="modal-header">
@@ -829,6 +932,9 @@
 
     const els = {
       nowClock: document.getElementById("nowClock"),
+      openGuideButton: document.getElementById("openGuideButton"),
+      guideModal: document.getElementById("guideModal"),
+      closeGuideModalButton: document.getElementById("closeGuideModalButton"),
       bossPickerButton: document.getElementById("bossPickerButton"),
       bossModal: document.getElementById("bossModal"),
       bossModalCards: document.getElementById("bossModalCards"),
@@ -1127,6 +1233,14 @@
       els.bossModal.hidden = true;
     }
 
+    function openGuideModal() {
+      els.guideModal.hidden = false;
+    }
+
+    function closeGuideModal() {
+      els.guideModal.hidden = true;
+    }
+
     function deleteRecord(id) {
       const target = state.records.find((item) => item.id === id);
       if (!target) return;
@@ -1341,6 +1455,12 @@
     }
 
     function bindEvents() {
+      els.openGuideButton.addEventListener("click", openGuideModal);
+      els.closeGuideModalButton.addEventListener("click", closeGuideModal);
+      els.guideModal.addEventListener("click", (event) => {
+        if (event.target === els.guideModal) closeGuideModal();
+      });
+
       els.bossPickerButton.addEventListener("click", openBossModal);
       els.closeBossModalButton.addEventListener("click", closeBossModal);
       els.bossModal.addEventListener("click", (event) => {
@@ -1348,6 +1468,7 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !els.bossModal.hidden) closeBossModal();
+        if (event.key === "Escape" && !els.guideModal.hidden) closeGuideModal();
       });
 
       els.bossModalCards.addEventListener("click", (event) => {
