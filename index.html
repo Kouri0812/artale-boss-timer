@@ -1,0 +1,1411 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Artale Boss Timer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #171426;
+      --panel: #fffdf7;
+      --panel-soft: #f4f0e8;
+      --ink: #171426;
+      --text: #191624;
+      --muted: #6f6878;
+      --line: #191624;
+      --accent: #ffb076;
+      --accent-dark: #f29659;
+      --ok: #147a5d;
+      --warn: #a46112;
+      --danger: #bd3153;
+      --shadow: 8px 8px 0 rgba(0, 0, 0, .26);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18px 18px, rgba(255, 255, 255, .08) 2px, transparent 3px) 0 0 / 42px 42px,
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", sans-serif;
+      line-height: 1.5;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 52px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      color: #fffdf7;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .mascot {
+      position: relative;
+      flex: 0 0 auto;
+      width: 58px;
+      height: 58px;
+      border: 3px solid #fffdf7;
+      border-radius: 50% 50% 42% 42%;
+      background: #fffdf7;
+      box-shadow: inset 0 -16px 0 var(--ink);
+    }
+
+    .mascot::before,
+    .mascot::after {
+      content: "";
+      position: absolute;
+      top: 20px;
+      width: 10px;
+      height: 14px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+
+    .mascot::before {
+      left: 17px;
+    }
+
+    .mascot::after {
+      right: 17px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: .98;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: rgba(255, 253, 247, .74);
+      font-size: 15px;
+    }
+
+    .clock {
+      min-width: 168px;
+      padding: 12px 14px;
+      border: 2px solid #fffdf7;
+      border-radius: 8px;
+      background: rgba(255, 253, 247, .08);
+      text-align: right;
+    }
+
+    .clock-label {
+      color: rgba(255, 253, 247, .64);
+      font-size: 12px;
+    }
+
+    .clock-time {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .server-panel summary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .server-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .server-panel summary::after {
+      content: "";
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      margin-left: auto;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%) 10px 12px / 7px 7px no-repeat,
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%) 14px 12px / 7px 7px no-repeat;
+    }
+
+    .server-panel:not([open]) summary::after {
+      background:
+        linear-gradient(135deg, transparent 50%, var(--muted) 50%) 10px 11px / 7px 7px no-repeat,
+        linear-gradient(45deg, var(--muted) 50%, transparent 50%) 14px 11px / 7px 7px no-repeat;
+    }
+
+    .server-summary {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .server-panel .panel-body {
+      padding-top: 0;
+    }
+
+    .panel-header {
+      padding: 18px 18px 0;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 11px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255, 176, 118, .26);
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+    }
+
+    input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .primary {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--ink);
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, .2);
+      font-weight: 900;
+    }
+
+    .primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .secondary,
+    .danger,
+    .ghost {
+      min-height: 38px;
+      border-radius: 8px;
+      padding: 8px 11px;
+      font-weight: 900;
+    }
+
+    .secondary {
+      background: #fff;
+      color: var(--text);
+      border: 2px solid var(--line);
+    }
+
+    .danger {
+      background: #fff0f2;
+      color: var(--danger);
+      border: 2px solid var(--line);
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 2px solid var(--line);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 12px 0 0;
+    }
+
+    .boss-meta {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .selected-boss-button {
+      width: 100%;
+      min-height: 68px;
+      padding: 13px 14px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      text-align: left;
+      font-weight: 900;
+      box-shadow: inset 0 -8px 0 #f4f0e8;
+    }
+
+    .selected-boss-button .small {
+      display: block;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .boss-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .boss-card {
+      position: relative;
+      min-height: 110px;
+      padding: 12px 38px 12px 12px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: inset 0 -10px 0 #f4f0e8;
+    }
+
+    .boss-card.active {
+      background: #fff4e8;
+      box-shadow: inset 0 -10px 0 #ffdcbf, 0 0 0 3px rgba(255, 176, 118, .32);
+    }
+
+    .boss-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      margin-bottom: 8px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: var(--ink);
+      font-size: 21px;
+      line-height: 1;
+    }
+
+    .boss-name {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .boss-time {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .hide-boss {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 26px;
+      height: 26px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .hide-boss:hover {
+      background: #fff1f2;
+      color: var(--danger);
+    }
+
+    .hidden-bosses {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .restore-boss {
+      min-height: 32px;
+      padding: 6px 9px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .estimate-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .estimate-item {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) minmax(170px, 1.25fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .estimate-item:last-child {
+      border-bottom: 0;
+    }
+
+    .estimate-boss {
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    .estimate-window {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(23, 20, 38, .72);
+    }
+
+    .modal[hidden] {
+      display: none;
+    }
+
+    .modal-panel {
+      width: min(680px, 100%);
+      max-height: min(760px, calc(100vh - 36px));
+      overflow: auto;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 10px 10px 0 rgba(0, 0, 0, .32);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    .modal-body {
+      padding: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tab {
+      min-height: 36px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      border: 2px solid var(--line);
+      font-weight: 800;
+    }
+
+    .tab.active {
+      background: var(--ink);
+      color: #fffdf7;
+      border-color: var(--ink);
+    }
+
+    .summary {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 6px 6px 0 rgba(0, 0, 0, .18);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+
+    th,
+    td {
+      padding: 13px 12px;
+      border-bottom: 2px solid #e3ded4;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      background: var(--panel-soft);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .channel {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .boss {
+      font-weight: 800;
+    }
+
+    .small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+      border: 2px solid var(--line);
+    }
+
+    .badge.wait {
+      background: #e9eef5;
+      color: #28344a;
+    }
+
+    .badge.soon {
+      background: #ffe4bf;
+      color: var(--warn);
+    }
+
+    .badge.live {
+      background: #d8f2dc;
+      color: var(--ok);
+    }
+
+    .badge.over {
+      background: #ffdce3;
+      color: var(--danger);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .empty {
+      padding: 32px 18px;
+      border: 2px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(255, 255, 255, .7);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(16px);
+      max-width: calc(100% - 32px);
+      padding: 11px 14px;
+      border-radius: 8px;
+      background: #111827;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      box-shadow: 0 18px 40px rgba(17, 24, 39, .22);
+      font-weight: 700;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        width: min(100% - 24px, 720px);
+        padding-top: 18px;
+      }
+
+      .topbar {
+        display: grid;
+      }
+
+      .clock {
+        text-align: left;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .estimate-item {
+        grid-template-columns: 1fr;
+      }
+
+      .boss-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      .tabs,
+      .toolbar .secondary,
+      .toolbar .danger {
+        width: 100%;
+      }
+
+      .tab {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="topbar">
+      <div class="brand">
+        <div class="mascot" aria-hidden="true"></div>
+        <div>
+          <h1>Artale Boss Timer</h1>
+          <p class="subtitle">記錄擊殺時間與頻道，自動整理下一次重生區間。</p>
+        </div>
+      </div>
+      <div class="clock" aria-live="polite">
+        <div class="clock-label">Now</div>
+        <div class="clock-time" id="nowClock">--:--:--</div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Quick Log</h2>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Current Boss</label>
+            <button class="selected-boss-button" id="bossPickerButton" type="button"></button>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="channelInput">Channel</label>
+              <input id="channelInput" inputmode="numeric" type="text" pattern="[0-9]*" autocomplete="off" placeholder="Channel number">
+            </div>
+            <div class="field">
+              <label for="killTimeInput">Kill Time</label>
+              <input id="killTimeInput" type="datetime-local">
+            </div>
+          </div>
+
+          <button class="primary" id="recordButton" type="button">Log Kill</button>
+          <p class="note">擊殺時間預設為現在。記錄後會保留野王、清空頻道，方便繼續隨機換頻。</p>
+        </div>
+      </aside>
+
+      <section>
+        <details class="panel server-panel" style="margin-bottom: 18px;">
+          <summary>
+            <h2 class="panel-title">伺服器開機時間</h2>
+            <span class="server-summary" id="serverSummary">尚未設定</span>
+          </summary>
+          <div class="panel-body">
+            <div class="field">
+                <label for="serverStartInput">開機時間</label>
+                <input id="serverStartInput" type="datetime-local">
+            </div>
+            <div class="row">
+              <button class="secondary" id="saveServerButton" type="button">更新開機時間</button>
+              <button class="ghost" id="clearServerButton" type="button">清除開機時間</button>
+            </div>
+            <div class="boss-meta" id="serverEstimate"></div>
+            <div class="hidden-bosses" id="hiddenBosses"></div>
+            <p class="note">輸入開機時間後會直接顯示所有野王的初始重生區間，不會產生頻道紀錄。</p>
+          </div>
+        </details>
+
+        <div class="toolbar">
+          <div class="tabs" role="tablist" aria-label="紀錄篩選">
+            <button class="tab active" data-filter="all" type="button">全部</button>
+            <button class="tab" data-filter="current" type="button">目前野王</button>
+            <button class="tab" data-filter="live" type="button">重生區間中</button>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="exportButton" type="button">Export</button>
+            <button class="danger" id="clearAllButton" type="button">Clear All</button>
+          </div>
+        </div>
+
+        <div class="summary" id="summary"></div>
+        <div id="recordsArea" style="margin-top: 10px;"></div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal" id="bossModal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="bossModalTitle">
+      <div class="modal-header">
+        <h2 class="panel-title" id="bossModalTitle">Choose Boss</h2>
+        <button class="ghost" id="closeBossModalButton" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="boss-grid" id="bossModalCards"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const bosses = [
+      { name: "海怒斯", icon: "🐟", min: 180, max: 300 },
+      { name: "瘋狂喵z客", icon: "😈", min: 120, max: 420 },
+      { name: "黑輪王", icon: "⚔️", min: 780, max: 1020 },
+      { name: "仙人娃娃", icon: "🪵", min: 158, max: 180 },
+      { name: "巴洛古", icon: "👹", min: 405, max: 540 },
+      { name: "九尾妖狐", icon: "🦊", min: 210, max: 570 },
+      { name: "書生幽靈", icon: "👻", min: 150, max: 300 },
+      { name: "殭屍蘑菇王", icon: "🍄", min: 195, max: 225 },
+      { name: "蘑菇王", icon: "🍄", min: 210, max: 240 },
+      { name: "雪山魔女", icon: "🧙", min: 158, max: 180 },
+      { name: "葛雷金剛", icon: "🤖", min: 270, max: 350 },
+      { name: "雪毛怪人", icon: "☃️", min: 45, max: 68 },
+      { name: "厄運死神", icon: "💀", min: 45, max: 105 },
+      { name: "喵怪仙人", icon: "🐱", min: 150, max: 170 },
+      { name: "肯德熊", icon: "🐻", min: 113, max: 128 },
+      { name: "巨大深山人蔘", icon: "🌰", min: 60, max: 135 },
+      { name: "艾利傑", icon: "🐺", min: 118, max: 128 },
+      { name: "奇美拉", icon: "🧪", min: 120, max: 135 },
+      { name: "藍菇菇王", icon: "🔵", min: 1000, max: 1880 },
+      { name: "寒霜冰龍", icon: "🐉", min: 240, max: 720 }
+    ];
+
+    const storageKey = "maple-boss-respawn-v1";
+    const soonMinutes = 15;
+    const state = loadState();
+
+    const els = {
+      nowClock: document.getElementById("nowClock"),
+      bossPickerButton: document.getElementById("bossPickerButton"),
+      bossModal: document.getElementById("bossModal"),
+      bossModalCards: document.getElementById("bossModalCards"),
+      closeBossModalButton: document.getElementById("closeBossModalButton"),
+      hiddenBosses: document.getElementById("hiddenBosses"),
+      channelInput: document.getElementById("channelInput"),
+      killTimeInput: document.getElementById("killTimeInput"),
+      recordButton: document.getElementById("recordButton"),
+      serverStartInput: document.getElementById("serverStartInput"),
+      serverSummary: document.getElementById("serverSummary"),
+      serverEstimate: document.getElementById("serverEstimate"),
+      saveServerButton: document.getElementById("saveServerButton"),
+      clearServerButton: document.getElementById("clearServerButton"),
+      exportButton: document.getElementById("exportButton"),
+      clearAllButton: document.getElementById("clearAllButton"),
+      summary: document.getElementById("summary"),
+      recordsArea: document.getElementById("recordsArea"),
+      toast: document.getElementById("toast")
+    };
+
+    let activeFilter = "all";
+    let toastTimer = 0;
+    let lastServerEstimateMinute = "";
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey));
+        if (saved && Array.isArray(saved.records)) {
+          return {
+            selectedBoss: saved.selectedBoss || "黑輪王",
+            serverStart: saved.serverStart || "",
+            hiddenBosses: Array.isArray(saved.hiddenBosses) ? saved.hiddenBosses : [],
+            records: saved.records.filter((record) => record.source !== "server")
+          };
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+      return {
+        selectedBoss: "黑輪王",
+        serverStart: "",
+        hiddenBosses: [],
+        records: []
+      };
+    }
+
+    function saveState() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function toLocalInputValue(date) {
+      return [
+        date.getFullYear(),
+        pad(date.getMonth() + 1),
+        pad(date.getDate())
+      ].join("-") + "T" + [pad(date.getHours()), pad(date.getMinutes())].join(":");
+    }
+
+    function parseLocalInput(value) {
+      if (!value) return null;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function formatDateTime(date) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const datePart = [date.getMonth() + 1, date.getDate()].map(pad).join("/");
+      const timePart = [date.getHours(), date.getMinutes()].map(pad).join(":");
+
+      if (date.toDateString() === today.toDateString()) return `今天 ${timePart}`;
+      if (date.toDateString() === tomorrow.toDateString()) return `明天 ${timePart}`;
+      return `${datePart} ${timePart}`;
+    }
+
+    function formatDuration(minutes) {
+      const safeMinutes = Math.max(0, Math.round(minutes));
+      const hours = Math.floor(safeMinutes / 60);
+      const mins = safeMinutes % 60;
+      if (hours && mins) return `${hours}小時${mins}分`;
+      if (hours) return `${hours}小時`;
+      return `${mins}分`;
+    }
+
+    function getBoss(name) {
+      return bosses.find((boss) => boss.name === name) || bosses[0];
+    }
+
+    function getVisibleBosses() {
+      return bosses.filter((boss) => !state.hiddenBosses.includes(boss.name));
+    }
+
+    function ensureSelectedBossVisible() {
+      const visibleBosses = getVisibleBosses();
+      if (!visibleBosses.length) {
+        state.selectedBoss = "";
+        return;
+      }
+      if (!state.selectedBoss || state.hiddenBosses.includes(state.selectedBoss)) {
+        state.selectedBoss = visibleBosses[0].name;
+      }
+    }
+
+    function calcWindow(record) {
+      const boss = getBoss(record.boss);
+      const base = new Date(record.baseTime);
+      return {
+        base,
+        start: new Date(base.getTime() + boss.min * 60 * 1000),
+        end: new Date(base.getTime() + boss.max * 60 * 1000)
+      };
+    }
+
+    function getStatus(record, now = new Date()) {
+      const win = calcWindow(record);
+      const diffToStart = (win.start.getTime() - now.getTime()) / 60000;
+
+      if (now > win.end) {
+        return { key: "over", text: "已超過", detail: `超過最晚 ${formatDuration((now - win.end) / 60000)}` };
+      }
+      if (now >= win.start && now <= win.end) {
+        return { key: "live", text: "可能重生中", detail: `剩餘區間 ${formatDuration((win.end - now) / 60000)}` };
+      }
+      if (diffToStart <= soonMinutes) {
+        return { key: "soon", text: "即將到", detail: `距離最早 ${formatDuration(diffToStart)}` };
+      }
+      return { key: "wait", text: "尚未到", detail: `距離最早 ${formatDuration(diffToStart)}` };
+    }
+
+    function sourceText(source) {
+      return source === "server" ? "伺服器開機" : "玩家擊殺";
+    }
+
+    function getServerEstimateRecords() {
+      if (!state.serverStart) return null;
+      const serverDate = parseLocalInput(state.serverStart);
+      if (!serverDate) return null;
+      return getVisibleBosses().map((boss) => ({
+        id: `server-estimate-${boss.name}`,
+        boss: boss.name,
+        channel: "",
+        source: "server",
+        baseTime: serverDate.toISOString(),
+        updatedAt: serverDate.toISOString()
+      }));
+    }
+
+    function renderBossPicker() {
+      ensureSelectedBossVisible();
+      const visibleBosses = getVisibleBosses();
+
+      if (!visibleBosses.length) {
+        els.bossPickerButton.textContent = "No tracked boss";
+        els.bossModalCards.innerHTML = `<div class="empty" style="grid-column: 1 / -1;">No tracked boss.</div>`;
+      } else {
+        const selectedBoss = getBoss(state.selectedBoss);
+        els.bossPickerButton.innerHTML = `
+          ${selectedBoss.icon} ${selectedBoss.name}
+          <span class="small">${formatDuration(selectedBoss.min)} ~ ${formatDuration(selectedBoss.max)}</span>
+        `;
+        els.bossModalCards.innerHTML = visibleBosses.map((boss) => `
+          <div class="boss-card ${boss.name === state.selectedBoss ? "active" : ""}" role="button" tabindex="0" data-boss="${boss.name}">
+            <span class="boss-icon">${boss.icon}</span>
+            <span class="boss-name">${boss.name}</span>
+            <span class="boss-time">${formatDuration(boss.min)} ~ ${formatDuration(boss.max)}</span>
+          </div>
+        `).join("");
+      }
+
+      if (!state.hiddenBosses.length) {
+        els.hiddenBosses.innerHTML = "";
+        return;
+      }
+
+      els.hiddenBosses.innerHTML = state.hiddenBosses.map((name) => {
+        const boss = getBoss(name);
+        return `<button class="restore-boss" type="button" data-restore-boss="${boss.name}">${boss.icon} ${boss.name}</button>`;
+      }).join("");
+    }
+
+    function recordKill() {
+      const bossName = state.selectedBoss;
+      const channelText = els.channelInput.value.trim();
+      const channel = Number(channelText);
+      const killDate = parseLocalInput(els.killTimeInput.value);
+
+      if (!bossName) {
+        showToast("請先恢復至少一隻野王");
+        return;
+      }
+
+      if (!/^\d+$/.test(channelText) || channel < 1 || channel > 9999) {
+        showToast("請輸入 1 到 9999 的頻道");
+        els.channelInput.focus();
+        return;
+      }
+
+      if (!killDate) {
+        showToast("請選擇擊殺時間");
+        els.killTimeInput.focus();
+        return;
+      }
+
+      upsertRecord({
+        id: `${bossName}-${channel}`,
+        boss: bossName,
+        channel,
+        source: "kill",
+        baseTime: killDate.toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      els.channelInput.value = "";
+      els.killTimeInput.value = toLocalInputValue(new Date());
+      saveState();
+      render();
+      showToast(`已記錄 ${bossName} ${channel}頻`);
+      els.channelInput.focus();
+    }
+
+    function upsertRecord(record) {
+      const index = state.records.findIndex((item) => item.boss === record.boss && Number(item.channel) === Number(record.channel));
+      if (index >= 0) {
+        state.records[index] = { ...state.records[index], ...record };
+      } else {
+        state.records.push(record);
+      }
+    }
+
+    function saveServerStart() {
+      const serverDate = parseLocalInput(els.serverStartInput.value);
+
+      if (!serverDate) {
+        showToast("請先設定伺服器開機時間");
+        els.serverStartInput.focus();
+        return;
+      }
+
+      state.serverStart = els.serverStartInput.value;
+      saveState();
+      render();
+      showToast("已儲存伺服器開機時間");
+    }
+
+    function updateServerStartFromInput() {
+      const serverDate = parseLocalInput(els.serverStartInput.value);
+      state.serverStart = serverDate ? els.serverStartInput.value : "";
+      saveState();
+      renderServerSummary();
+      renderServerEstimate();
+    }
+
+    function clearServerStart() {
+      state.serverStart = "";
+      els.serverStartInput.value = "";
+      saveState();
+      render();
+      showToast("已清除伺服器開機時間");
+    }
+
+    function selectBoss(name) {
+      if (state.hiddenBosses.includes(name)) return;
+      state.selectedBoss = name;
+      saveState();
+      render();
+    }
+
+    function hideBoss(name) {
+      if (!state.hiddenBosses.includes(name)) {
+        state.hiddenBosses.push(name);
+      }
+      ensureSelectedBossVisible();
+      saveState();
+      render();
+      showToast(`已隱藏 ${name}`);
+    }
+
+    function restoreBoss(name) {
+      state.hiddenBosses = state.hiddenBosses.filter((bossName) => bossName !== name);
+      if (!state.selectedBoss) state.selectedBoss = name;
+      saveState();
+      render();
+      showToast(`已恢復 ${name}`);
+    }
+
+    function openBossModal() {
+      els.bossModal.hidden = false;
+    }
+
+    function closeBossModal() {
+      els.bossModal.hidden = true;
+    }
+
+    function deleteRecord(id) {
+      const target = state.records.find((item) => item.id === id);
+      if (!target) return;
+      state.records = state.records.filter((item) => item.id !== id);
+      saveState();
+      render();
+      showToast(`已刪除 ${target.boss} ${target.channel}頻`);
+    }
+
+    function setKillTimeNow(id) {
+      const target = state.records.find((item) => item.id === id);
+      if (!target) return;
+      target.source = "kill";
+      target.baseTime = new Date().toISOString();
+      target.updatedAt = new Date().toISOString();
+      saveState();
+      render();
+      showToast(`已更新 ${target.boss} ${target.channel}頻為現在擊殺`);
+    }
+
+    function getFilteredRecords() {
+      const now = new Date();
+      return state.records
+        .filter((record) => {
+          if (state.hiddenBosses.includes(record.boss)) return false;
+          if (activeFilter === "current") return record.boss === state.selectedBoss;
+          if (activeFilter === "live") return getStatus(record, now).key === "live";
+          return true;
+        })
+        .sort((a, b) => {
+          const statusOrder = { live: 0, soon: 1, wait: 2, over: 3 };
+          const aStatus = getStatus(a, now).key;
+          const bStatus = getStatus(b, now).key;
+          if (statusOrder[aStatus] !== statusOrder[bStatus]) {
+            return statusOrder[aStatus] - statusOrder[bStatus];
+          }
+          return calcWindow(a).start - calcWindow(b).start;
+        });
+    }
+
+    function render() {
+      renderBossPicker();
+      renderServerSummary();
+      renderServerEstimate();
+      renderSummary();
+      renderRecords();
+    }
+
+    function renderServerSummary() {
+      const records = getServerEstimateRecords();
+      if (!records) {
+        els.serverSummary.textContent = "尚未設定";
+        return;
+      }
+
+      const now = new Date();
+      const liveCount = records.filter((record) => getStatus(record, now).key === "live").length;
+      const soonCount = records.filter((record) => getStatus(record, now).key === "soon").length;
+      const baseTime = parseLocalInput(state.serverStart);
+      els.serverSummary.textContent = `開機 ${formatDateTime(baseTime)}｜追蹤 ${records.length}｜重生中 ${liveCount}｜即將到 ${soonCount}`;
+    }
+
+    function renderServerEstimate() {
+      const records = getServerEstimateRecords();
+      if (!records || !records.length) {
+        els.serverEstimate.textContent = state.serverStart ? "目前沒有追蹤中的野王。" : "尚未設定開機時間。";
+        return;
+      }
+
+      const statusOrder = { live: 0, soon: 1, wait: 2, over: 3 };
+      const rows = records
+        .map((record) => {
+          const boss = getBoss(record.boss);
+          const win = calcWindow(record);
+          const status = getStatus(record);
+          return { boss, win, status };
+        })
+        .sort((a, b) => {
+          if (statusOrder[a.status.key] !== statusOrder[b.status.key]) {
+            return statusOrder[a.status.key] - statusOrder[b.status.key];
+          }
+          return a.win.start - b.win.start;
+        })
+        .map(({ boss, win, status }) => `
+          <div class="boss-card" data-server-boss="${boss.name}">
+            <span class="boss-icon">${boss.icon}</span>
+            <span class="boss-name">${boss.name}</span>
+            <span class="boss-time">${formatDateTime(win.start)} ~ ${formatDateTime(win.end)}</span>
+            <span class="badge ${status.key}">${status.text}</span>
+            <span class="small">${status.detail}</span>
+            <button class="hide-boss" type="button" data-hide-boss="${boss.name}" title="隱藏">×</button>
+          </div>
+        `)
+        .join("");
+
+      els.serverEstimate.innerHTML = `
+        <div class="boss-grid">${rows}</div>
+      `;
+    }
+
+    function renderSummary() {
+      const now = new Date();
+      const visibleRecords = state.records.filter((record) => !state.hiddenBosses.includes(record.boss));
+      const liveCount = visibleRecords.filter((record) => getStatus(record, now).key === "live").length;
+      const soonCount = visibleRecords.filter((record) => getStatus(record, now).key === "soon").length;
+      els.summary.textContent = `${visibleRecords.length} records | ${liveCount} live | ${soonCount} soon`;
+    }
+
+    function renderRecords() {
+      const records = getFilteredRecords();
+
+      if (!records.length) {
+        els.recordsArea.innerHTML = `<div class="empty">目前沒有符合條件的紀錄。</div>`;
+        return;
+      }
+
+      const rows = records.map((record) => {
+        const boss = getBoss(record.boss);
+        const win = calcWindow(record);
+        const status = getStatus(record);
+        return `
+          <tr>
+            <td><span class="channel">${record.channel}頻</span></td>
+            <td>
+              <span class="boss">${boss.icon} ${record.boss}</span>
+              <span class="small">${sourceText(record.source)}</span>
+            </td>
+            <td>
+              ${formatDateTime(win.base)}
+              <span class="small">${sourceText(record.source)}時間</span>
+            </td>
+            <td>
+              ${formatDateTime(win.start)} ~ ${formatDateTime(win.end)}
+              <span class="small">${formatDuration(boss.min)} ~ ${formatDuration(boss.max)}</span>
+            </td>
+            <td>
+              <span class="badge ${status.key}">${status.text}</span>
+              <span class="small">${status.detail}</span>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="secondary" type="button" data-now="${record.id}">Kill Now</button>
+                <button class="danger" type="button" data-delete="${record.id}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      els.recordsArea.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th>Boss</th>
+                <th>Base Time</th>
+                <th>Respawn Window</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 1800);
+    }
+
+    function exportData() {
+      const records = getFilteredRecords();
+      if (!records.length) {
+        showToast("目前沒有資料可匯出");
+        return;
+      }
+
+      const text = records.map((record) => {
+        const win = calcWindow(record);
+        const status = getStatus(record);
+        return `${record.boss} ${record.channel}頻｜${sourceText(record.source)} ${formatDateTime(win.base)}｜重生 ${formatDateTime(win.start)} ~ ${formatDateTime(win.end)}｜${status.text}`;
+      }).join("\n");
+
+      if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        showToast("此瀏覽器不支援直接複製，請從表格查看資料");
+        return;
+      }
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("已複製目前列表");
+      }).catch(() => {
+        showToast("瀏覽器不允許複製，請改用表格查看");
+      });
+    }
+
+    function clearAll() {
+      if (!state.records.length) {
+        showToast("目前沒有紀錄");
+        return;
+      }
+      const confirmed = window.confirm("確定要清除全部紀錄嗎？");
+      if (!confirmed) return;
+      state.records = [];
+      saveState();
+      render();
+      showToast("已清除全部紀錄");
+    }
+
+    function bindEvents() {
+      els.bossPickerButton.addEventListener("click", openBossModal);
+      els.closeBossModalButton.addEventListener("click", closeBossModal);
+      els.bossModal.addEventListener("click", (event) => {
+        if (event.target === els.bossModal) closeBossModal();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !els.bossModal.hidden) closeBossModal();
+      });
+
+      els.bossModalCards.addEventListener("click", (event) => {
+        const card = event.target.closest("[data-boss]");
+        if (!card) return;
+        selectBoss(card.dataset.boss);
+        closeBossModal();
+      });
+
+      els.bossModalCards.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const card = event.target.closest("[data-boss]");
+        if (!card) return;
+        event.preventDefault();
+        selectBoss(card.dataset.boss);
+        closeBossModal();
+      });
+
+      els.serverEstimate.addEventListener("click", (event) => {
+        const hideName = event.target.dataset.hideBoss;
+        if (hideName) {
+          event.stopPropagation();
+          hideBoss(hideName);
+        }
+      });
+
+      els.hiddenBosses.addEventListener("click", (event) => {
+        const restoreName = event.target.dataset.restoreBoss;
+        if (restoreName) restoreBoss(restoreName);
+      });
+
+      els.recordButton.addEventListener("click", recordKill);
+      els.serverStartInput.addEventListener("change", updateServerStartFromInput);
+      els.saveServerButton.addEventListener("click", saveServerStart);
+      els.clearServerButton.addEventListener("click", clearServerStart);
+      els.exportButton.addEventListener("click", exportData);
+      els.clearAllButton.addEventListener("click", clearAll);
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          activeFilter = tab.dataset.filter;
+          renderRecords();
+        });
+      });
+
+      els.recordsArea.addEventListener("click", (event) => {
+        const deleteId = event.target.dataset.delete;
+        const nowId = event.target.dataset.now;
+        if (deleteId) deleteRecord(deleteId);
+        if (nowId) setKillTimeNow(nowId);
+      });
+
+      els.channelInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") recordKill();
+      });
+    }
+
+    function tick() {
+      const now = new Date();
+      els.nowClock.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()].map(pad).join(":");
+      const serverEstimateMinute = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
+      if (serverEstimateMinute !== lastServerEstimateMinute) {
+        lastServerEstimateMinute = serverEstimateMinute;
+        renderServerSummary();
+        renderServerEstimate();
+      }
+      renderSummary();
+      renderRecords();
+    }
+
+    function init() {
+      els.serverStartInput.value = state.serverStart;
+      els.killTimeInput.value = toLocalInputValue(new Date());
+      bindEvents();
+      render();
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
